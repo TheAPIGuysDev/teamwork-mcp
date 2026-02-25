@@ -1,0 +1,19 @@
+site_name: Teamwork MCP Server - Documentation
+
+theme:
+  name: readthedocs
+  highlightjs: true
+
+docs_dir: docs
+
+markdown_extensions:
+  - admonition
+  - tables
+  - fenced_code
+
+nav:
+  - Home: index.md
+  - Architecture: architecture.md
+  - Tools Reference: tools-reference.md
+  - Workflows: workflows.md
+  - TAG Workflow: tag-workflow.md

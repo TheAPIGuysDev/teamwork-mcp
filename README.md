@@ -71,6 +71,19 @@ Quick start:
 go run cmd/mcp-http-cli/main.go -mcp-url=https://mcp.example.com list-tools
 ```
 
+## 📚 Developer Documentation
+
+Internal docs (architecture, tools reference, and workflows) live in [`claude/docs/`](claude/docs/) and are served via MkDocs.
+
+```bash
+./claude/mkdocs-serve.sh   # serves at http://127.0.0.1:8000
+```
+
+Key pages:
+- [Architecture](claude/docs/architecture.md) — package map, middleware stack, config wiring
+- [Tools Reference](claude/docs/tools-reference.md) — all MCP tools by domain
+- [Workflows](claude/docs/workflows.md) — GitHub Issues, Teamwork Tasks, Pull Requests, deploying docs
+
 ## 📋 Prerequisites
 
 - Go 1.26 or later

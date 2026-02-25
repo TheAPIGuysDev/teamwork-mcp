@@ -17,6 +17,10 @@ TW_MCP_BEARER_TOKEN=your_token go run cmd/mcp-stdio/main.go
 go run cmd/mcp-http/main.go   # binds :8080 by default
 ```
 
+For Monica (Mac) using Claude Code:
+ claude mcp add teamwork --transport http https://mcp.ai.teamwork.com
+ then /mcp and Re-authenticate will open browser window to log in and authorize.
+
 See [Workflows](workflows.md) for Docker, Node/LangChain, and Python/LangChain usage.
 
 ## When to use LangChain

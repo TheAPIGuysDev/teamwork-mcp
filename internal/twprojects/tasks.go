@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"time"
 
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -62,6 +64,36 @@ func init() {
 		panic(fmt.Sprintf("failed to generate JSON schema for TaskListResponse: %v", err))
 	}
 	helpers.WithMetaWebLinkSchema(taskListOutputSchema)
+}
+
+// taskListWithDatesRequest wraps projects.TaskListRequest to add date-based
+// filters that the SDK does not currently expose.
+type taskListWithDatesRequest struct {
+	projects.TaskListRequest
+	taskFilter  string
+	dueDateFrom *twapi.Date
+	dueDateTo   *twapi.Date
+}
+
+// HTTPRequest implements twapi.HTTPRequester by delegating to the embedded
+// TaskListRequest and appending any date filter query parameters.
+func (r taskListWithDatesRequest) HTTPRequest(ctx context.Context, server string) (*http.Request, error) {
+	req, err := r.TaskListRequest.HTTPRequest(ctx, server)
+	if err != nil {
+		return nil, err
+	}
+	query := req.URL.Query()
+	if r.taskFilter != "" {
+		query.Set("taskFilter", r.taskFilter)
+	}
+	if r.dueDateFrom != nil {
+		query.Set("dueAfter", time.Time(*r.dueDateFrom).Format("2006-01-02"))
+	}
+	if r.dueDateTo != nil {
+		query.Set("dueBefore", time.Time(*r.dueDateTo).Format("2006-01-02"))
+	}
+	req.URL.RawQuery = query.Encode()
+	return req, nil
 }
 
 // TaskCreate creates a task in Teamwork.com.

@@ -51,17 +51,25 @@ func main() {
 
 	var authenticated bool
 	if resources.Info.BearerToken != "" {
-		// detect the installation from the bearer token
-		if info, err := auth.GetBearerInfo(ctx, resources, resources.Info.BearerToken); err != nil {
-			resources.Logger().Error("failed to get bearer info",
-				slog.String("error", err.Error()),
-			)
-		} else {
+		if resources.Info.APIURLExplicit {
+			// URL explicitly provided — skip launchpad lookup and authenticate directly.
+			// This supports API keys (twp_* tokens) which use Basic auth rather than Bearer.
 			authenticated = true
-			// inject customer URL in the context
-			ctx = config.WithCustomerURL(ctx, info.URL)
-			// inject bearer token in the context
-			ctx = session.WithBearerTokenContext(ctx, session.NewBearerToken(resources.Info.BearerToken, info.URL))
+			ctx = config.WithCustomerURL(ctx, resources.Info.APIURL)
+			ctx = session.WithBearerTokenContext(ctx, session.NewBearerToken(resources.Info.BearerToken, resources.Info.APIURL))
+		} else {
+			// detect the installation from the bearer token
+			if info, err := auth.GetBearerInfo(ctx, resources, resources.Info.BearerToken); err != nil {
+				resources.Logger().Error("failed to get bearer info",
+					slog.String("error", err.Error()),
+				)
+			} else {
+				authenticated = true
+				// inject customer URL in the context
+				ctx = config.WithCustomerURL(ctx, info.URL)
+				// inject bearer token in the context
+				ctx = session.WithBearerTokenContext(ctx, session.NewBearerToken(resources.Info.BearerToken, info.URL))
+			}
 		}
 	}
 

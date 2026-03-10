@@ -53,10 +53,16 @@ func main() {
 	if resources.Info.BearerToken != "" {
 		if resources.Info.APIURLExplicit {
 			// URL explicitly provided — skip launchpad lookup and authenticate directly.
-			// This supports API keys (twp_* tokens) which use Basic auth rather than Bearer.
 			authenticated = true
 			ctx = config.WithCustomerURL(ctx, resources.Info.APIURL)
-			ctx = session.WithBearerTokenContext(ctx, session.NewBearerToken(resources.Info.BearerToken, resources.Info.APIURL))
+			if strings.HasPrefix(resources.Info.BearerToken, "twp_") {
+				// API keys (twp_* format) use HTTP Basic auth, not Bearer.
+				resources.ReplaceTeamworkEngine(
+					config.NewTeamworkEngine(resources, session.NewBasicAuth(resources.Info.BearerToken, "x", resources.Info.APIURL)),
+				)
+			} else {
+				ctx = session.WithBearerTokenContext(ctx, session.NewBearerToken(resources.Info.BearerToken, resources.Info.APIURL))
+			}
 		} else {
 			// detect the installation from the bearer token
 			if info, err := auth.GetBearerInfo(ctx, resources, resources.Info.BearerToken); err != nil {

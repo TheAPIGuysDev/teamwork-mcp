@@ -128,6 +128,11 @@ func (r *Resources) TeamworkEngine() *twapi.Engine {
 	return r.teamworkEngine
 }
 
+// ReplaceTeamworkEngine replaces the internal Teamwork API engine.
+func (r *Resources) ReplaceTeamworkEngine(engine *twapi.Engine) {
+	r.teamworkEngine = engine
+}
+
 // DeskClient returns the Teamwork Desk Client for use.
 func (r *Resources) DeskClient() *desksdk.Client {
 	return r.deskClient

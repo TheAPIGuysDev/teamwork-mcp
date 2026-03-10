@@ -9,7 +9,24 @@ The official [Model Context Protocol](https://modelcontextprotocol.io/) server f
 
 ## Quick Start
 
-Copy `.env.example` to `.env`, set your `TW_MCP_PORT` (default `8787`), then:
+**Step 1 — Get your Teamwork API token** from your Teamwork account under *Your Profile → API Keys*. It looks like `twp_xxxxxxxxxxxx`.
+
+![Teamwork Settings](./images/teamwork-settings.png)
+
+**Step 2 — Create your `.env` file.** Copy the example and open it in a text editor:
+
+```bash
+cp .env.example .env
+```
+
+Add your API token to the file:
+
+```
+TEAMWORK_API_KEY=twp_xxxxxxxxxxxx
+TEAMWORK_WORKSPACE_URL=yourcompany.teamwork.com
+```
+
+**Step 3 — Start the server:**
 
 ```bash
 docker compose up -d
@@ -22,7 +39,7 @@ This starts two services:
 | MCP server | `TW_MCP_PORT` (default `8787`) | `http://localhost:8787` |
 | MkDocs docs | `TW_MCP_DOCS_PORT` (default `8989`) | `http://localhost:8989` |
 
-Connect any MCP client at the MCP server URL using your Teamwork API token in the `Authorization: Bearer` header. Visit the server in a browser to see the welcome page with a link to the docs.
+Visit `http://localhost:8787` in your browser — you should see the server welcome page. Then see [Using the Server](using-the-server.md) to connect your AI assistant.
 
 > **Note:** `docker compose` uses `local.yml` by default — `COMPOSE_FILE=local.yml` is set in `~/.zshrc`. No Go installation required.
 

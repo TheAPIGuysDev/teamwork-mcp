@@ -73,7 +73,7 @@ Both binaries are present in both images — only the entrypoint differs.
 Requires Go 1.26+ installed locally. No build step needed — `go run` compiles on the fly.
 
 ```bash
-# HTTP server — binds :8787
+# HTTP server — binds :8080
 go run cmd/mcp-http/main.go
 
 # STDIO server

@@ -4,7 +4,7 @@ As with many TAG repos, you can interface with other tools by creating a `.env` 
 
 - [Create a Github Issue](#creating-a-github-issue)
 - [Create a Github Pull Request](#creating-a-pull-request)
-- [Create a Teamwor Task](#creating-a-teamwork-task)
+- [Create a Teamwork Task](#creating-a-teamwork-task)
 - [Running MkDocs Locally](#serve-locally)
 - [Push MkDocs to Server](#pushing-docs-to-the-server)
 

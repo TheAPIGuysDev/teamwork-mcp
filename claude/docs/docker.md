@@ -163,8 +163,14 @@ docker run --rm -i \
   mcp-build-check
 ```
 
-Pass `--read-only` flag (via `TW_MCP_READ_ONLY=true` or the binary flag) to disable all
-write tools.
+Pass the `-read-only` flag to disable all write tools:
+
+```bash
+docker run --rm -i \
+  -e TW_MCP_BEARER_TOKEN=$TEAMWORK_API_KEY \
+  --entrypoint /bin/tw-mcp-stdio \
+  mcp-build-check -read-only
+```
 
 ---
 

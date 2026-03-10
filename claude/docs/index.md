@@ -33,7 +33,7 @@ Connect any MCP client at the MCP server URL using your Teamwork API token in th
 TW_MCP_BEARER_TOKEN=$TEAMWORK_API_KEY go run cmd/mcp-stdio/main.go
 
 # HTTP mode without Docker
-go run cmd/mcp-http/main.go   # binds :8787 by default
+go run cmd/mcp-http/main.go   # binds :8080 by default
 ```
 
 See [Docker & Local Dev](docker.md) for full Docker and Compose reference, and [Workflows](workflows.md) for Node/LangChain and Python/LangChain usage.

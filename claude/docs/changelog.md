@@ -1,5 +1,44 @@
 # Changelog
 
+## Local Enhancements — March 10, 2026
+
+### Docker Compose Support (two services)
+
+Added `local.yml` — a Docker Compose file following TAG's project convention
+(`COMPOSE_FILE=local.yml` in `~/.zshrc`). Running `docker compose up -d` now starts
+two services:
+
+| Service | Container | Default port |
+|---------|-----------|-------------|
+| MCP server | `teamwork-mcp` | `TW_MCP_PORT` (default `8787`) |
+| MkDocs docs | `teamwork-mcp-docs` | `TW_MCP_DOCS_PORT` (default `8989`) |
+
+The MkDocs service is built from `claude/Dockerfile` (Python 3.12 alpine + mkdocs) and
+mounts `./claude/` as a live volume — docs edits are reflected immediately without a
+rebuild.
+
+No Go installation required for either service.
+
+`.env.example` updated with `TW_MCP_PORT`, `TW_MCP_LOG_LEVEL`, `TW_MCP_LOG_FORMAT`,
+and `TW_MCP_DOCS_PORT`.
+
+### Server Welcome Page
+
+Opening the MCP server URL in a browser now shows a dark-themed welcome page confirming
+the server is running, rather than an `Unauthorized` error. The page includes:
+
+- Server version and running status
+- A button linking to the MkDocs docs (`TW_MCP_DOCS_URL`, default `http://localhost:8989`)
+- MCP endpoint URL and health check link
+
+Implemented as `welcomeMiddleware` in `cmd/mcp-http/main.go`, which intercepts `GET /`
+browser requests and serves HTML; all other requests are passed to the MCP handler.
+
+`TW_MCP_DOCS_URL` added to `internal/config/resources.go` to make the docs link
+configurable at runtime.
+
+---
+
 ## Local Enhancements — March 9, 2026
 
 ### Date-Based Task Filtering

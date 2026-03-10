@@ -158,3 +158,73 @@ https://{your-company-name}.teamwork.com/
 ```
 
 Using the generic `www.teamwork.com` will fail to authenticate because the API won't know which account's data to return.
+
+---
+
+## Follow-Up: MCP Authentication Issue
+
+> I'm having trouble authenticating to the MCP server. API authentication seems pretty easy. Here is my code: [tasks-by-date branch](https://github.com/TheAPIGuysDev/teamwork-mcp/tree/tasks-by-date)
+
+### Gemini's Response
+
+Authenticating a Model Context Protocol (MCP) server for Teamwork can be tricky because you're balancing two different "handshakes":
+
+1. **AI Client → MCP Server** (e.g., Claude Desktop or Cursor connecting to your server process)
+2. **MCP Server → Teamwork API** (your server calling Teamwork on behalf of the AI)
+
+Based on the code structure typical for `teamwork-mcp`, the issue usually lies in how environment variables are passed to the server process.
+
+---
+
+### 1. The "Bearer" vs "Basic" Confusion
+
+As discussed earlier, Teamwork's API uses Basic Auth (`Token + "X"`), but many MCP implementations allow you to provide a Personal Access Token or Bearer Token if they've implemented a wrapper.
+
+Since you are running this as a local STDIO server, authentication isn't handled in request headers in your code — it's handled by the **environment variables you provide when the server starts**.
+
+---
+
+### 2. How to Fix Your MCP Configuration
+
+If you are using Claude Desktop or Cursor, update your `claude_desktop_config.json`. The server doesn't "see" your token unless it is explicitly passed into the process environment via the `env` block:
+
+```json
+{
+  "mcpServers": {
+    "teamwork": {
+      "command": "node",
+      "args": ["/path/to/your/teamwork-mcp/build/index.js"],
+      "env": {
+        "TEAMWORK_API_TOKEN": "your_actual_token_here",
+        "TEAMWORK_DOMAIN": "yourcompany"
+      }
+    }
+  }
+}
+```
+
+---
+
+### 3. Common Code Pitfalls in `tasks-by-date`
+
+**Check the variable name:** Does your code look for `process.env.TEAMWORK_API_TOKEN` or `process.env.API_TOKEN`? They must match exactly.
+
+**The "X" Password:** If your MCP server builds the fetch request manually, ensure it's doing the Base64 encoding:
+
+```javascript
+// Inside your MCP server tool logic
+const auth = btoa(`${process.env.TEAMWORK_API_TOKEN}:X`);
+```
+
+---
+
+### 4. Debugging a "401 Unauthorized"
+
+**Restart the client:** Claude and Cursor only read the config file on startup. If you changed the token, you must fully quit and restart the app.
+
+**Check the logs:** MCP servers log errors to a local file.
+
+| Platform | Log Location |
+|---|---|
+| macOS | `~/Library/Logs/Claude/mcp.log` |
+| Windows | `%APPDATA%\Claude\logs\mcp.log` |

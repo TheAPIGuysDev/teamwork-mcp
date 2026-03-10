@@ -17,5 +17,6 @@ nav:
   - Tools Reference: tools-reference.md
   - Workflows: workflows.md
   - TAG Workflow: tag-workflow.md
+  - Using the Server: using-the-server.md
   - Docker & Local Dev: docker.md
   - Changelog: changelog.md

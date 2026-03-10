@@ -1,5 +1,26 @@
 # Changelog
 
+## Local Enhancements — March 9, 2026
+
+### Date-Based Task Filtering
+
+Added `task_filter`, `due_date_from`, and `due_date_to` parameters to all three task list tools:
+`twprojects-list_tasks`, `twprojects-list_tasks_by_tasklist`, `twprojects-list_tasks_by_project`.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `task_filter` | enum | `today`, `tomorrow`, `overdue`, `thisweek`, `within7`, `within14`, `within30`, `within365` |
+| `due_date_from` | date (YYYY-MM-DD) | Tasks with due date on or after this date |
+| `due_date_to` | date (YYYY-MM-DD) | Tasks with due date on or before this date |
+
+The SDK (`twapi-go-sdk`) does not expose these API query parameters, so the implementation
+introduces `taskListWithDatesRequest` in `internal/twprojects/tasks.go` — a local type that
+embeds the SDK's `TaskListRequest`, implements `twapi.HTTPRequester`, and appends the extra
+query params (`taskFilter`, `dueAfter`, `dueBefore`) before the request is sent.
+No SDK fork required. See [Docker & Local Development](docker.md) for how to build and run.
+
+---
+
 ## Upstream Merge — March 9, 2026
 
 This page summarizes the 19 commits merged from upstream `main` on 2026-03-09.

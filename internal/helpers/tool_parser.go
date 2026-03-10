@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
+	"strconv"
+	"strings"
 	"time"
 
 	twapi "github.com/teamwork/twapi-go-sdk"
@@ -297,6 +299,12 @@ func timeParam(
 	if !ok {
 		return fmt.Errorf("invalid type for %s: expected string, got %T", key, value)
 	}
+	if strings.TrimSpace(v) == "" {
+		if optional {
+			return nil
+		}
+		return fmt.Errorf("parameter %s is required and cannot be empty", key)
+	}
 	for _, middleware := range middlewares {
 		var err error
 		if ok, err = middleware(&v); err != nil || !ok {
@@ -384,6 +392,12 @@ func timeOnlyParam(
 	v, ok := value.(string)
 	if !ok {
 		return fmt.Errorf("invalid type for %s: expected string, got %T", key, value)
+	}
+	if strings.TrimSpace(v) == "" {
+		if optional {
+			return nil
+		}
+		return fmt.Errorf("parameter %s is required and cannot be empty", key)
 	}
 	for _, middleware := range middlewares {
 		var err error
@@ -475,6 +489,12 @@ func dateParam(
 	if !ok {
 		return fmt.Errorf("invalid type for %s: expected string, got %T", key, value)
 	}
+	if strings.TrimSpace(v) == "" {
+		if optional {
+			return nil
+		}
+		return fmt.Errorf("parameter %s is required and cannot be empty", key)
+	}
 	for _, middleware := range middlewares {
 		var err error
 		if ok, err = middleware(&v); err != nil || !ok {
@@ -565,6 +585,12 @@ func legacyDateParam(
 	v, ok := value.(string)
 	if !ok {
 		return fmt.Errorf("invalid type for %s: expected string, got %T", key, value)
+	}
+	if strings.TrimSpace(v) == "" {
+		if optional {
+			return nil
+		}
+		return fmt.Errorf("parameter %s is required and cannot be empty", key)
 	}
 	for _, middleware := range middlewares {
 		var err error
@@ -729,6 +755,18 @@ func toFloat64(value any) (float64, bool) {
 		v = float64(n)
 	case float64:
 		v = n
+	case string:
+		if parsed, err := strconv.ParseInt(n, 10, 64); err == nil {
+			v = float64(parsed)
+		} else {
+			return 0, false
+		}
+	case []byte:
+		if parsed, err := strconv.ParseInt(string(n), 10, 64); err == nil {
+			v = float64(parsed)
+		} else {
+			return 0, false
+		}
 	default:
 		return 0, false
 	}

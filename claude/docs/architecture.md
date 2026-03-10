@@ -54,7 +54,7 @@ Each domain file (e.g., `internal/twprojects/tasks.go`) uses `init()` to registe
 ## Authentication
 
 - **HTTP server**: Extracts Bearer token from `Authorization` header; also supports OAuth2 flows. Cross-region requests detected and redirected.
-- **STDIO server**: Single static token from `TW_MCP_BEARER_TOKEN` env var.
+- **STDIO server**: Single static Teamwork API key from `TW_MCP_BEARER_TOKEN` env var. When `TW_MCP_API_URL` is also set, the server skips the launchpad lookup and authenticates directly. `twp_*` API keys use HTTP Basic auth; OAuth tokens use Bearer.
 - **Scopes**: Defined in `internal/config/scopes.go`; checked during auth middleware.
 
 ## External Dependencies

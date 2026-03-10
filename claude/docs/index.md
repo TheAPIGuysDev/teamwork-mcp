@@ -9,19 +9,34 @@ The official [Model Context Protocol](https://modelcontextprotocol.io/) server f
 
 ## Quick Start
 
-```bash
-# STDIO mode (desktop/local)
-TW_MCP_BEARER_TOKEN=your_token go run cmd/mcp-stdio/main.go
+Copy `.env.example` to `.env`, set your `TW_MCP_PORT` (default `8787`), then:
 
-# HTTP mode (production)
-go run cmd/mcp-http/main.go   # binds :8080 by default
+```bash
+docker compose up -d
 ```
 
-For Monica (Mac) using Claude Code:
- claude mcp add teamwork --transport http https://mcp.ai.teamwork.com
- then /mcp and Re-authenticate will open browser window to log in and authorize.
+This starts two services:
 
-See [Workflows](workflows.md) for Docker, Node/LangChain, and Python/LangChain usage.
+| Service | Default port | URL |
+|---------|-------------|-----|
+| MCP server | `TW_MCP_PORT` (default `8787`) | `http://localhost:8787` |
+| MkDocs docs | `TW_MCP_DOCS_PORT` (default `8989`) | `http://localhost:8989` |
+
+Connect any MCP client at the MCP server URL using your Teamwork API token in the `Authorization: Bearer` header. Visit the server in a browser to see the welcome page with a link to the docs.
+
+> **Note:** `docker compose` uses `local.yml` by default — `COMPOSE_FILE=local.yml` is set in `~/.zshrc`. No Go installation required.
+
+### Other run modes
+
+```bash
+# STDIO mode (local desktop integration)
+TW_MCP_BEARER_TOKEN=$TEAMWORK_API_KEY go run cmd/mcp-stdio/main.go
+
+# HTTP mode without Docker
+go run cmd/mcp-http/main.go   # binds :8787 by default
+```
+
+See [Docker & Local Dev](docker.md) for full Docker and Compose reference, and [Workflows](workflows.md) for Node/LangChain and Python/LangChain usage.
 
 ## When to use LangChain
 
@@ -51,4 +66,4 @@ The examples in `examples/nodejs-langchain/` and `examples/python-langchain/` ar
 - **No single binary**: Three separate `cmd/` entrypoints — HTTP and STDIO have meaningfully different middleware stacks and startup logic.
 - **`init()` registration**: Each domain file registers its tools in `init()`. Adding an import is enough to activate a toolset.
 - **Read-only enforcement**: Done at the `ToolsetGroup` level, not per-handler. Write tools are simply not registered when read-only mode is active.
-- **Bearer token only for STDIO**: The HTTP server supports OAuth2; STDIO uses a single static token from `TW_MCP_BEARER_TOKEN`.
+- **API key for STDIO**: The HTTP server supports OAuth2; STDIO uses a single static Teamwork API key from `TW_MCP_BEARER_TOKEN`. `twp_*` API keys use Basic auth internally; the env var name is kept for historical reasons.

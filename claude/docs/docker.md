@@ -21,7 +21,21 @@ The project includes `local.yml` as its Compose file. TAG's dev environment alre
 docker compose up -d
 ```
 
-To rebuild the image after code changes:
+This starts **two services**:
+
+| Service | Container | Default port |
+|---------|-----------|-------------|
+| MCP server | `teamwork-mcp` | `TW_MCP_PORT` (default `8787`) |
+| MkDocs docs | `teamwork-mcp-docs` | `TW_MCP_DOCS_PORT` (default `8989`) |
+
+![MCP server index file](./images/mcp-server.png)
+
+The MkDocs container mounts `./claude/` as a volume, so edits to `claude/docs/*.md` are
+reflected live without a rebuild.
+
+![Documentation in MkDocs](./images/mkdocs-server.png)
+
+To rebuild images after code changes:
 
 ```bash
 docker compose up -d --build
@@ -51,25 +65,31 @@ The Compose-relevant variables (with defaults):
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `TW_MCP_PORT` | `8080` | Host port the server is exposed on |
+| `TW_MCP_PORT` | `8787` | Host port the MCP server is exposed on |
 | `TW_MCP_LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error` |
 | `TW_MCP_LOG_FORMAT` | `text` | `text` or `json` |
+| `TW_MCP_DOCS_PORT` | `8989` | Host port the MkDocs docs server is exposed on |
+
+### Welcome page
+
+Opening the server URL in a browser (e.g. `http://localhost:8787`) shows a welcome page
+confirming the server is running and linking directly to the docs on `TW_MCP_DOCS_PORT`.
 
 ### Connecting an MCP client
 
 Once running, point your MCP client at:
 
 ```
-http://localhost:8080
+http://localhost:<TW_MCP_PORT>
 ```
 
-Pass your Teamwork API token as the Bearer token in each request:
+Pass your Teamwork API token in the `Authorization` header of each MCP request:
 
 ```
 Authorization: Bearer <your_teamwork_api_token>
 ```
 
-The server forwards that token to the Teamwork API — no separate server credential needed.
+The MCP server uses that token to authenticate with the Teamwork API on your behalf — no separate server credential needed. The server handles the correct auth method internally (Basic auth for `twp_*` API keys).
 
 ---
 
@@ -123,22 +143,22 @@ Builds the full image (both binaries are compiled), but the entrypoint is `/bin/
 
 ```bash
 docker run --rm \
-  -e TW_MCP_BEARER_TOKEN=your_token \
-  -p 8080:8080 \
+  -e TW_MCP_BEARER_TOKEN=$TEAMWORK_API_KEY \
+  -p 8787:8080 \
   mcp-build-check
 ```
 
-The server listens on `:8080`. MCP clients connect with:
+The server listens on `:8787`. MCP clients connect with:
 
 ```
-Authorization: Bearer your_token
+Authorization: Bearer TEAMWORK_API_KEY
 ```
 
 ### STDIO server
 
 ```bash
 docker run --rm -i \
-  -e TW_MCP_BEARER_TOKEN=your_token \
+  -e TW_MCP_BEARER_TOKEN=$TEAMWORK_API_KEY \
   --entrypoint /bin/tw-mcp-stdio \
   mcp-build-check
 ```
@@ -167,7 +187,7 @@ into the runner. The final image contains no Go toolchain.
 
 | Variable | Purpose | Default |
 |----------|---------|---------|
-| `TW_MCP_BEARER_TOKEN` | Auth token clients must supply | — |
+| `TW_MCP_BEARER_TOKEN` | Teamwork API key (STDIO mode) or token clients must supply (HTTP mode) | — |
 | `TW_MCP_SERVER_ADDRESS` | HTTP bind address | `:8080` |
 | `TW_MCP_LOG_LEVEL` | `debug` / `info` / `warn` / `error` | `info` |
 | `TW_MCP_LOG_FORMAT` | `text` / `json` | `text` |
@@ -215,8 +235,8 @@ installing Go on your host machine.
 
 ```bash
 docker run --rm \
-  -e TW_MCP_BEARER_TOKEN=your_token \
+  -e TW_MCP_BEARER_TOKEN=$TEAMWORK_API_KEY \
   -e TW_MCP_LOG_FORMAT=json \
-  -p 8080:8080 \
+  -p 8787:8080 \
   mcp-build-check | jq .
 ```

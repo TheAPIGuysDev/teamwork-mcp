@@ -61,7 +61,7 @@ func main() {
 
 	mux := newRouter(resources)
 	mux.Handle("/sse", sseLogMiddleware(resources.Logger(), mcpSSEServer))
-	mux.Handle("/", mcpHTTPServer)
+	mux.Handle("/", welcomeMiddleware(resources, mcpHTTPServer))
 
 	httpServer := &http.Server{
 		Addr:    resources.Info.ServerAddress,
@@ -114,6 +114,63 @@ func newMCPServer(resources config.Resources) (*mcp.Server, error) {
 	return config.NewMCPServer(resources, projectsGroup, deskGroup), nil
 }
 
+func welcomeMiddleware(resources config.Resources, next http.Handler) http.Handler {
+	version := resources.Info.Version
+	if version == "" {
+		version = "dev"
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && r.URL.Path == "/" {
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprintf(w, `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teamwork MCP Server</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+           max-width: 640px; margin: 80px auto; padding: 0 24px;
+           background: #0f1117; color: #e2e8f0; }
+    h1   { font-size: 1.5rem; font-weight: 600; margin-bottom: 4px; }
+    .tag { display: inline-block; background: #22c55e22; color: #22c55e;
+           border: 1px solid #22c55e44; border-radius: 4px;
+           font-size: 0.75rem; padding: 2px 8px; margin-bottom: 32px; }
+    p    { color: #94a3b8; line-height: 1.6; }
+    code { background: #1e2432; border: 1px solid #2d3748; border-radius: 4px;
+           padding: 2px 6px; font-size: 0.875rem; color: #7dd3fc; }
+    a.btn { display: inline-block; margin-top: 8px; padding: 10px 20px;
+            background: #1d4ed8; color: #fff; border-radius: 6px;
+            text-decoration: none; font-weight: 500; }
+    a.btn:hover { background: #2563eb; }
+    a    { color: #7dd3fc; }
+    hr   { border: none; border-top: 1px solid #2d3748; margin: 32px 0; }
+    .dim { color: #64748b; font-size: 0.875rem; }
+  </style>
+</head>
+<body>
+  <h1>Teamwork MCP Server</h1>
+  <span class="tag">&#x25cf; Running &mdash; %s</span>
+
+  <p>This is an MCP (Model Context Protocol) API endpoint. It is not a website &mdash;
+     it is designed to be connected to an AI assistant such as Claude, Copilot, or Cursor.</p>
+
+  <p>For instructions on connecting your AI assistant and making requests, see the documentation:</p>
+  <p><a class="btn" href="%s/using-the-server/">&#x1F4D6; &nbsp; How to use this server</a></p>
+
+  <hr>
+  <p class="dim">MCP endpoint: <code>%s</code> &nbsp;&bull;&nbsp;
+     Health: <a href="/api/health"><code>/api/health</code></a> &nbsp;&bull;&nbsp;
+     Version %s</p>
+</body>
+</html>`, version, resources.Info.DocsURL, resources.Info.MCPURL, version)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func newRouter(resources config.Resources) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
@@ -136,10 +193,6 @@ func newRouter(resources config.Resources) *http.ServeMux {
 		w.Header().Set("Access-Control-Allow-Headers", "*")
 		w.WriteHeader(http.StatusOK)
 
-		if r.Method == http.MethodOptions {
-			return
-		}
-
 		// https://datatracker.ietf.org/doc/html/rfc9728/#section-2
 		_, _ = w.Write([]byte(`{
   "resource": "` + resources.Info.MCPURL + `",
@@ -148,6 +201,12 @@ func newRouter(resources config.Resources) *http.ServeMux {
   "resource_documentation": "https://apidocs.teamwork.com/guides/teamwork/app-login-flow",
   "scopes_supported": [ "projects", "desk" ]
 }`))
+	})
+	mux.HandleFunc("OPTIONS /.well-known/oauth-protected-resource", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "*")
+		w.WriteHeader(http.StatusOK)
 	})
 	return mux
 }
@@ -344,6 +403,10 @@ func authMiddleware(resources config.Resources, next http.Handler) http.Handler 
 	whitelistEndpoints := map[string][]string{
 		// health checks don't require authentication
 		"/api/health": {http.MethodGet, http.MethodOptions},
+		// welcome page is public
+		"/": {http.MethodGet},
+		// OAuth2 discovery endpoints are public
+		"/.well-known/oauth-protected-resource": {http.MethodGet, http.MethodOptions},
 	}
 
 	whitelistPrefixEndpoints := map[string][]string{

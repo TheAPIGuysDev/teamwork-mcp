@@ -86,42 +86,7 @@ func Load(logOutput io.Writer) (Resources, func()) {
 		resources.teamworkHTTPClient.Transport,
 	)
 
-	resources.teamworkEngine = twapi.NewEngine(session.NewBearerTokenContext(),
-		twapi.WithHTTPClient(resources.teamworkHTTPClient),
-		twapi.WithMiddleware(func(next twapi.HTTPClient) twapi.HTTPClient {
-			return twapi.HTTPClientFunc(func(req *http.Request) (*http.Response, error) {
-				// add request information to Sentry reports
-				if resources.Info.Log.SentryDSN != "" {
-					hub := sentry.CurrentHub().Clone()
-					hub.Scope().SetRequest(req)
-					ctx := sentry.SetHubOnContext(req.Context(), hub)
-					req = req.WithContext(ctx)
-				}
-				return next.Do(req)
-			})
-		}),
-		twapi.WithMiddleware(func(next twapi.HTTPClient) twapi.HTTPClient {
-			return twapi.HTTPClientFunc(func(req *http.Request) (*http.Response, error) {
-				// add proxy headers
-				request.SetProxyHeaders(req)
-				// add user agent
-				req.Header.Set("User-Agent", "Teamwork MCP/"+resources.Info.Version)
-				return next.Do(req)
-			})
-		}),
-		twapi.WithMiddleware(func(next twapi.HTTPClient) twapi.HTTPClient {
-			return twapi.HTTPClientFunc(func(req *http.Request) (*http.Response, error) {
-				if haProxyURL != nil && !isCrossRegion(req.Context()) {
-					// use internal HAProxy address to avoid extra hops
-					req.Header.Set("Host", req.URL.Host)
-					req.URL.Host = haProxyURL.Host
-					req.URL.Scheme = haProxyURL.Scheme
-				}
-				return next.Do(req)
-			})
-		}),
-		twapi.WithLogger(resources.logger),
-	)
+	resources.teamworkEngine = buildTeamworkEngine(resources, haProxyURL, session.NewBearerTokenContext())
 
 	resources.deskClient = desksdk.NewClient(
 		resources.Info.APIURL+"/desk/api/v2",
@@ -326,4 +291,55 @@ func mcpLoggingMiddleware(resources Resources) mcp.Middleware {
 			return result, nil
 		}
 	}
+}
+
+// NewTeamworkEngine creates a new Teamwork Engine with the given session,
+// applying the same middleware configuration used during Load.
+func NewTeamworkEngine(resources Resources, s twapi.Session) *twapi.Engine {
+	var haProxyURL *url.URL
+	if resources.Info.HAProxyURL != "" {
+		if u, err := url.Parse(resources.Info.HAProxyURL); err == nil {
+			haProxyURL = u
+		}
+	}
+	return buildTeamworkEngine(resources, haProxyURL, s)
+}
+
+func buildTeamworkEngine(resources Resources, haProxyURL *url.URL, s twapi.Session) *twapi.Engine {
+	return twapi.NewEngine(s,
+		twapi.WithHTTPClient(resources.teamworkHTTPClient),
+		twapi.WithMiddleware(func(next twapi.HTTPClient) twapi.HTTPClient {
+			return twapi.HTTPClientFunc(func(req *http.Request) (*http.Response, error) {
+				// add request information to Sentry reports
+				if resources.Info.Log.SentryDSN != "" {
+					hub := sentry.CurrentHub().Clone()
+					hub.Scope().SetRequest(req)
+					ctx := sentry.SetHubOnContext(req.Context(), hub)
+					req = req.WithContext(ctx)
+				}
+				return next.Do(req)
+			})
+		}),
+		twapi.WithMiddleware(func(next twapi.HTTPClient) twapi.HTTPClient {
+			return twapi.HTTPClientFunc(func(req *http.Request) (*http.Response, error) {
+				// add proxy headers
+				request.SetProxyHeaders(req)
+				// add user agent
+				req.Header.Set("User-Agent", "Teamwork MCP/"+resources.Info.Version)
+				return next.Do(req)
+			})
+		}),
+		twapi.WithMiddleware(func(next twapi.HTTPClient) twapi.HTTPClient {
+			return twapi.HTTPClientFunc(func(req *http.Request) (*http.Response, error) {
+				if haProxyURL != nil && !isCrossRegion(req.Context()) {
+					// use internal HAProxy address to avoid extra hops
+					req.Header.Set("Host", req.URL.Host)
+					req.URL.Host = haProxyURL.Host
+					req.URL.Scheme = haProxyURL.Scheme
+				}
+				return next.Do(req)
+			})
+		}),
+		twapi.WithLogger(resources.logger),
+	)
 }

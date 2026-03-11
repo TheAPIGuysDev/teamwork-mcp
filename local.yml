@@ -1,0 +1,40 @@
+services:
+    teamwork-mcp:
+        build:
+            context: .
+            target: runner
+        container_name: teamwork-mcp
+        restart: unless-stopped
+        ports:
+            - "${TW_MCP_PORT:-8787}:8080"
+        environment:
+            - TW_MCP_SERVER_ADDRESS=:8080
+            - TW_MCP_LOG_LEVEL=${TW_MCP_LOG_LEVEL:-info}
+            - TW_MCP_LOG_FORMAT=${TW_MCP_LOG_FORMAT:-text}
+            - TW_MCP_DOCS_URL=http://localhost:${TW_MCP_DOCS_PORT:-8989}
+        healthcheck:
+            test:
+                [
+                    "CMD",
+                    "wget",
+                    "--spider",
+                    "-q",
+                    "http://localhost:8080/api/health",
+                ]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 10s
+
+    mkdocs:
+        build:
+            context: ./claude
+            dockerfile: Dockerfile
+        container_name: teamwork-mcp-docs
+        restart: unless-stopped
+        ports:
+            - "${TW_MCP_DOCS_PORT:-8989}:8000"
+        volumes:
+            - ./claude:/docs
+        environment:
+            - WATCHDOG_FORCE_POLLING=1

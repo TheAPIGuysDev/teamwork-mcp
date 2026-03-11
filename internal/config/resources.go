@@ -38,6 +38,10 @@ type Resources struct {
 		MCPURL string
 		// APIURL is the base URL of the Teamwork API.
 		APIURL string
+		// APIURLExplicit is true when TW_MCP_API_URL was explicitly set via environment variable.
+		APIURLExplicit bool
+		// DocsURL is the base URL of the MCP server documentation.
+		DocsURL string
 		// HAProxyURL is the URL of the HAProxy instance. This is useful for the MCP
 		// server in HTTP mode.
 		HAProxyURL string
@@ -82,7 +86,13 @@ func newResources() Resources {
 	resources.Info.Environment = getEnv("TW_MCP_ENV", "dev")
 	resources.Info.AWSRegion = getEnv("TW_MCP_AWS_REGION", "us-east-1")
 	resources.Info.MCPURL = strings.TrimSuffix(getEnv("TW_MCP_URL", "https://mcp.ai.teamwork.com"), "/")
-	resources.Info.APIURL = strings.TrimSuffix(getEnv("TW_MCP_API_URL", "https://teamwork.com"), "/")
+	if apiURL, ok := os.LookupEnv("TW_MCP_API_URL"); ok {
+		resources.Info.APIURL = strings.TrimSuffix(apiURL, "/")
+		resources.Info.APIURLExplicit = true
+	} else {
+		resources.Info.APIURL = "https://teamwork.com"
+	}
+	resources.Info.DocsURL = strings.TrimSuffix(getEnv("TW_MCP_DOCS_URL", "http://localhost:8989"), "/")
 	resources.Info.HAProxyURL = getEnv("TW_MCP_HAPROXY_URL", "")
 	resources.Info.BearerToken = getEnv("TW_MCP_BEARER_TOKEN", "")
 	resources.Info.Log.Format = strings.ToLower(getEnv("TW_MCP_LOG_FORMAT", "text"))
@@ -116,6 +126,11 @@ func (r *Resources) TeamworkHTTPClient() *http.Client {
 // requests to Teamwork API.
 func (r *Resources) TeamworkEngine() *twapi.Engine {
 	return r.teamworkEngine
+}
+
+// ReplaceTeamworkEngine replaces the internal Teamwork API engine.
+func (r *Resources) ReplaceTeamworkEngine(engine *twapi.Engine) {
+	r.teamworkEngine = engine
 }
 
 // DeskClient returns the Teamwork Desk Client for use.

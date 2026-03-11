@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"time"
 
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -62,6 +64,36 @@ func init() {
 		panic(fmt.Sprintf("failed to generate JSON schema for TaskListResponse: %v", err))
 	}
 	helpers.WithMetaWebLinkSchema(taskListOutputSchema)
+}
+
+// taskListWithDatesRequest wraps projects.TaskListRequest to add date-based
+// filters that the SDK does not currently expose.
+type taskListWithDatesRequest struct {
+	projects.TaskListRequest
+	taskFilter  string
+	dueDateFrom *twapi.Date
+	dueDateTo   *twapi.Date
+}
+
+// HTTPRequest implements twapi.HTTPRequester by delegating to the embedded
+// TaskListRequest and appending any date filter query parameters.
+func (r taskListWithDatesRequest) HTTPRequest(ctx context.Context, server string) (*http.Request, error) {
+	req, err := r.TaskListRequest.HTTPRequest(ctx, server)
+	if err != nil {
+		return nil, err
+	}
+	query := req.URL.Query()
+	if r.taskFilter != "" {
+		query.Set("taskFilter", r.taskFilter)
+	}
+	if r.dueDateFrom != nil {
+		query.Set("dueAfter", time.Time(*r.dueDateFrom).Format("2006-01-02"))
+	}
+	if r.dueDateTo != nil {
+		query.Set("dueBefore", time.Time(*r.dueDateTo).Format("2006-01-02"))
+	}
+	req.URL.RawQuery = query.Encode()
+	return req, nil
 }
 
 // TaskCreate creates a task in Teamwork.com.
@@ -607,12 +639,33 @@ func TaskList(engine *twapi.Engine) toolsets.ToolWrapper {
 						Type:        "integer",
 						Description: "Number of results per page for pagination.",
 					},
+					"task_filter": {
+						Type: "string",
+						Description: "Filter tasks by a predefined due-date window. Use 'today' for tasks due today, " +
+							"'tomorrow' for tasks due tomorrow, 'overdue' for past-due tasks, 'thisweek' for " +
+							"this week, 'within7'/'within14'/'within30'/'within365' for tasks due within N days.",
+						Enum: []any{"today", "tomorrow", "overdue", "thisweek", "within7", "within14", "within30", "within365"},
+					},
+					"due_date_from": {
+						Type:   "string",
+						Format: "date",
+						Description: "Return only tasks with a due date on or after this date (YYYY-MM-DD). " +
+							"Can be combined with due_date_to for a date range.",
+					},
+					"due_date_to": {
+						Type:   "string",
+						Format: "date",
+						Description: "Return only tasks with a due date on or before this date (YYYY-MM-DD). " +
+							"Can be combined with due_date_from for a date range.",
+					},
 				},
 			},
 			OutputSchema: taskListOutputSchema,
 		},
 		Handler: func(ctx context.Context, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			var taskListRequest projects.TaskListRequest
+			var taskFilter string
+			var dueDateFrom, dueDateTo *twapi.Date
 
 			var arguments map[string]any
 			if err := json.Unmarshal(request.Params.Arguments, &arguments); err != nil {
@@ -625,12 +678,24 @@ func TaskList(engine *twapi.Engine) toolsets.ToolWrapper {
 				helpers.OptionalPointerParam(&taskListRequest.Filters.MatchAllTags, "match_all_tags"),
 				helpers.OptionalNumericParam(&taskListRequest.Filters.Page, "page"),
 				helpers.OptionalNumericParam(&taskListRequest.Filters.PageSize, "page_size"),
+				helpers.OptionalParam(&taskFilter, "task_filter",
+					helpers.RestrictValues("today", "tomorrow", "overdue", "thisweek", "within7", "within14", "within30", "within365"),
+				),
+				helpers.OptionalDatePointerParam(&dueDateFrom, "due_date_from"),
+				helpers.OptionalDatePointerParam(&dueDateTo, "due_date_to"),
 			)
 			if err != nil {
 				return helpers.NewToolResultTextError(fmt.Sprintf("invalid parameters: %s", err.Error())), nil
 			}
 
-			taskList, err := projects.TaskList(ctx, engine, taskListRequest)
+			taskList, err := twapi.Execute[taskListWithDatesRequest, *projects.TaskListResponse](ctx, engine,
+				taskListWithDatesRequest{
+					TaskListRequest: taskListRequest,
+					taskFilter:      taskFilter,
+					dueDateFrom:     dueDateFrom,
+					dueDateTo:       dueDateTo,
+				},
+			)
 			if err != nil {
 				return helpers.HandleAPIError(err, "failed to list tasks")
 			}
@@ -699,6 +764,25 @@ func TaskListByTasklist(engine *twapi.Engine) toolsets.ToolWrapper {
 						Type:        "integer",
 						Description: "Number of results per page for pagination.",
 					},
+					"task_filter": {
+						Type: "string",
+						Description: "Filter tasks by a predefined due-date window. Use 'today' for tasks due today, " +
+							"'tomorrow' for tasks due tomorrow, 'overdue' for past-due tasks, 'thisweek' for " +
+							"this week, 'within7'/'within14'/'within30'/'within365' for tasks due within N days.",
+						Enum: []any{"today", "tomorrow", "overdue", "thisweek", "within7", "within14", "within30", "within365"},
+					},
+					"due_date_from": {
+						Type:   "string",
+						Format: "date",
+						Description: "Return only tasks with a due date on or after this date (YYYY-MM-DD). " +
+							"Can be combined with due_date_to for a date range.",
+					},
+					"due_date_to": {
+						Type:   "string",
+						Format: "date",
+						Description: "Return only tasks with a due date on or before this date (YYYY-MM-DD). " +
+							"Can be combined with due_date_from for a date range.",
+					},
 				},
 				Required: []string{"tasklist_id"},
 			},
@@ -706,6 +790,8 @@ func TaskListByTasklist(engine *twapi.Engine) toolsets.ToolWrapper {
 		},
 		Handler: func(ctx context.Context, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			var taskListRequest projects.TaskListRequest
+			var taskFilter string
+			var dueDateFrom, dueDateTo *twapi.Date
 
 			var arguments map[string]any
 			if err := json.Unmarshal(request.Params.Arguments, &arguments); err != nil {
@@ -719,12 +805,24 @@ func TaskListByTasklist(engine *twapi.Engine) toolsets.ToolWrapper {
 				helpers.OptionalPointerParam(&taskListRequest.Filters.MatchAllTags, "match_all_tags"),
 				helpers.OptionalNumericParam(&taskListRequest.Filters.Page, "page"),
 				helpers.OptionalNumericParam(&taskListRequest.Filters.PageSize, "page_size"),
+				helpers.OptionalParam(&taskFilter, "task_filter",
+					helpers.RestrictValues("today", "tomorrow", "overdue", "thisweek", "within7", "within14", "within30", "within365"),
+				),
+				helpers.OptionalDatePointerParam(&dueDateFrom, "due_date_from"),
+				helpers.OptionalDatePointerParam(&dueDateTo, "due_date_to"),
 			)
 			if err != nil {
 				return helpers.NewToolResultTextError(fmt.Sprintf("invalid parameters: %s", err.Error())), nil
 			}
 
-			taskList, err := projects.TaskList(ctx, engine, taskListRequest)
+			taskList, err := twapi.Execute[taskListWithDatesRequest, *projects.TaskListResponse](ctx, engine,
+				taskListWithDatesRequest{
+					TaskListRequest: taskListRequest,
+					taskFilter:      taskFilter,
+					dueDateFrom:     dueDateFrom,
+					dueDateTo:       dueDateTo,
+				},
+			)
 			if err != nil {
 				return helpers.HandleAPIError(err, "failed to list tasks")
 			}
@@ -793,6 +891,25 @@ func TaskListByProject(engine *twapi.Engine) toolsets.ToolWrapper {
 						Type:        "integer",
 						Description: "Number of results per page for pagination.",
 					},
+					"task_filter": {
+						Type: "string",
+						Description: "Filter tasks by a predefined due-date window. Use 'today' for tasks due today, " +
+							"'tomorrow' for tasks due tomorrow, 'overdue' for past-due tasks, 'thisweek' for " +
+							"this week, 'within7'/'within14'/'within30'/'within365' for tasks due within N days.",
+						Enum: []any{"today", "tomorrow", "overdue", "thisweek", "within7", "within14", "within30", "within365"},
+					},
+					"due_date_from": {
+						Type:   "string",
+						Format: "date",
+						Description: "Return only tasks with a due date on or after this date (YYYY-MM-DD). " +
+							"Can be combined with due_date_to for a date range.",
+					},
+					"due_date_to": {
+						Type:   "string",
+						Format: "date",
+						Description: "Return only tasks with a due date on or before this date (YYYY-MM-DD). " +
+							"Can be combined with due_date_from for a date range.",
+					},
 				},
 				Required: []string{"project_id"},
 			},
@@ -800,6 +917,8 @@ func TaskListByProject(engine *twapi.Engine) toolsets.ToolWrapper {
 		},
 		Handler: func(ctx context.Context, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			var taskListRequest projects.TaskListRequest
+			var taskFilter string
+			var dueDateFrom, dueDateTo *twapi.Date
 
 			var arguments map[string]any
 			if err := json.Unmarshal(request.Params.Arguments, &arguments); err != nil {
@@ -813,12 +932,24 @@ func TaskListByProject(engine *twapi.Engine) toolsets.ToolWrapper {
 				helpers.OptionalPointerParam(&taskListRequest.Filters.MatchAllTags, "match_all_tags"),
 				helpers.OptionalNumericParam(&taskListRequest.Filters.Page, "page"),
 				helpers.OptionalNumericParam(&taskListRequest.Filters.PageSize, "page_size"),
+				helpers.OptionalParam(&taskFilter, "task_filter",
+					helpers.RestrictValues("today", "tomorrow", "overdue", "thisweek", "within7", "within14", "within30", "within365"),
+				),
+				helpers.OptionalDatePointerParam(&dueDateFrom, "due_date_from"),
+				helpers.OptionalDatePointerParam(&dueDateTo, "due_date_to"),
 			)
 			if err != nil {
 				return helpers.NewToolResultTextError(fmt.Sprintf("invalid parameters: %s", err.Error())), nil
 			}
 
-			taskList, err := projects.TaskList(ctx, engine, taskListRequest)
+			taskList, err := twapi.Execute[taskListWithDatesRequest, *projects.TaskListResponse](ctx, engine,
+				taskListWithDatesRequest{
+					TaskListRequest: taskListRequest,
+					taskFilter:      taskFilter,
+					dueDateFrom:     dueDateFrom,
+					dueDateTo:       dueDateTo,
+				},
+			)
 			if err != nil {
 				return helpers.HandleAPIError(err, "failed to list tasks")
 			}

@@ -4,8 +4,8 @@ As with many TAG repos, you can interface with other tools by creating a `.env` 
 
 - [Create a Github Issue](#creating-a-github-issue)
 - [Create a Github Pull Request](#creating-a-pull-request)
-- [Create a Teamwor Task](#creating-a-teamwork-task)
-- [Running MkDocs Locally](#serve-locally-first)
+- [Create a Teamwork Task](#creating-a-teamwork-task)
+- [Running MkDocs Locally](#serve-locally)
 - [Push MkDocs to Server](#pushing-docs-to-the-server)
 
 ## Creating a GitHub Issue
@@ -60,7 +60,7 @@ source .env
 
 curl -s -X POST \
   "https://${TEAMWORK_WORKSPACE_URL}/projects/${TEAMWORK_PROJECT_ID}/tasks.json" \
-  -H "Authorization: Bearer ${TEAMWORK_API_KEY}" \
+  -u "${TEAMWORK_API_KEY}:X" \
   -H "Content-Type: application/json" \
   -d '{
     "todo-item": {
@@ -110,7 +110,18 @@ Check CI status: `gh pr checks` | View PR: `gh pr view --web`
 
 Docs are built with MkDocs and deployed via rsync over SSH. Credentials come from `.env` (see `.env.example`).
 
-### Serve locally first
+### Serve locally
+
+The easiest way is via Docker — docs are included in the standard Compose stack:
+
+```bash
+docker compose up -d
+# Visit http://localhost:8989 (or TW_MCP_DOCS_PORT)
+```
+
+Edits to `claude/docs/*.md` are reflected live without a rebuild.
+
+Alternatively, run MkDocs directly on the host (requires Python + mkdocs installed):
 
 ```bash
 ./claude/mkdocs-serve.sh

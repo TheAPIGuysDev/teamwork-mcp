@@ -9,19 +9,51 @@ The official [Model Context Protocol](https://modelcontextprotocol.io/) server f
 
 ## Quick Start
 
-```bash
-# STDIO mode (desktop/local)
-TW_MCP_BEARER_TOKEN=your_token go run cmd/mcp-stdio/main.go
+**Step 1 — Get your Teamwork API token** from your Teamwork account under *Your Profile → API Keys*. It looks like `twp_xxxxxxxxxxxx`.
 
-# HTTP mode (production)
+![Teamwork Settings](./images/teamwork-settings.png)
+
+**Step 2 — Create your `.env` file.** Copy the example and open it in a text editor:
+
+```bash
+cp .env.example .env
+```
+
+Add your API token to the file:
+
+```
+TEAMWORK_API_KEY=twp_xxxxxxxxxxxx
+TEAMWORK_WORKSPACE_URL=yourcompany.teamwork.com
+```
+
+**Step 3 — Start the server:**
+
+```bash
+docker compose up -d
+```
+
+This starts two services:
+
+| Service | Default port | URL |
+|---------|-------------|-----|
+| MCP server | `TW_MCP_PORT` (default `8787`) | `http://localhost:8787` |
+| MkDocs docs | `TW_MCP_DOCS_PORT` (default `8989`) | `http://localhost:8989` |
+
+Visit `http://localhost:8787` in your browser — you should see the server welcome page. Then see [Using the Server](using-the-server.md) to connect your AI assistant.
+
+> **Note:** `docker compose` uses `local.yml` by default — `COMPOSE_FILE=local.yml` is set in `~/.zshrc`. No Go installation required.
+
+### Other run modes
+
+```bash
+# STDIO mode (local desktop integration)
+TW_MCP_BEARER_TOKEN=$TEAMWORK_API_KEY go run cmd/mcp-stdio/main.go
+
+# HTTP mode without Docker
 go run cmd/mcp-http/main.go   # binds :8080 by default
 ```
 
-For Monica (Mac) using Claude Code:
- claude mcp add teamwork --transport http https://mcp.ai.teamwork.com
- then /mcp and Re-authenticate will open browser window to log in and authorize.
-
-See [Workflows](workflows.md) for Docker, Node/LangChain, and Python/LangChain usage.
+See [Docker & Local Dev](docker.md) for full Docker and Compose reference, and [Workflows](workflows.md) for Node/LangChain and Python/LangChain usage.
 
 ## When to use LangChain
 
@@ -51,4 +83,4 @@ The examples in `examples/nodejs-langchain/` and `examples/python-langchain/` ar
 - **No single binary**: Three separate `cmd/` entrypoints — HTTP and STDIO have meaningfully different middleware stacks and startup logic.
 - **`init()` registration**: Each domain file registers its tools in `init()`. Adding an import is enough to activate a toolset.
 - **Read-only enforcement**: Done at the `ToolsetGroup` level, not per-handler. Write tools are simply not registered when read-only mode is active.
-- **Bearer token only for STDIO**: The HTTP server supports OAuth2; STDIO uses a single static token from `TW_MCP_BEARER_TOKEN`.
+- **API key for STDIO**: The HTTP server supports OAuth2; STDIO uses a single static Teamwork API key from `TW_MCP_BEARER_TOKEN`. `twp_*` API keys use Basic auth internally; the env var name is kept for historical reasons.

@@ -1,5 +1,27 @@
 # Changelog
 
+## Upstream Merge — March 11, 2026
+
+### Merge Conflict: `cmd/mcp-stdio/main.go`
+
+When merging upstream commit `33038a5` ("inject bearer token into the desk context"), a conflict
+arose in `cmd/mcp-stdio/main.go` because both sides modified overlapping regions of the bearer
+token setup block.
+
+**What upstream changed:** Added `ctx = config.WithBearerToken(ctx, resources.Info.BearerToken)`
+in the non-explicit URL path (after `auth.GetBearerInfo` succeeds), so Desk SDK clients receive
+the bearer token in context.
+
+**What our fork had changed:** Added `twp_*` API key detection in the explicit URL path
+(`if resources.Info.APIURLExplicit`), falling back to HTTP Basic auth
+(`session.NewBasicAuth`) instead of Bearer for tokens with the `twp_` prefix.
+
+**Resolution:** Both changes are preserved:
+- `if APIURLExplicit` block: our `twp_*` basic auth handling is retained unchanged.
+- `else` block (`auth.GetBearerInfo` path): upstream's `config.WithBearerToken` call is added.
+
+---
+
 ## Local Enhancements — March 10, 2026
 
 ### Docker Compose Support (two services)

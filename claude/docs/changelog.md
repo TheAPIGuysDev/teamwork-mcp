@@ -1,5 +1,61 @@
 # Changelog
 
+## Local Enhancements — March 20, 2026
+
+### Budget Tools (New)
+
+Added two new read-only MCP tools for querying Teamwork.com project and tasklist budgets.
+Implemented in `internal/twprojects/budgets.go` and registered in `DefaultToolsetGroup`.
+
+| Tool | Description |
+|------|-------------|
+| `twprojects-list_project_budgets` | List project budgets, filterable by project IDs, status (`upcoming`/`active`/`complete`), with cursor-based pagination |
+| `twprojects-list_tasklist_budgets` | List tasklist budgets for a given project budget ID, with page-based pagination |
+
+Both tools follow the existing pattern: output schemas generated from SDK response types, `webLinker` meta attached via `helpers.WithMetaWebLinkSchema`.
+
+### Timelog Delete Tool (New)
+
+Added `twprojects-delete_timelog` — a write tool that deletes a timelog by ID.
+Registered alongside the existing create/update tools in `DefaultToolsetGroup` under the `allowDelete` guard, consistent with how other delete tools (tasks, projects, etc.) are gated.
+
+### Usage Documentation (New)
+
+Added `docs/usage/` — a set of client setup guides for connecting AI tools to the MCP server.
+
+| File | Content |
+|------|---------|
+| `docs/usage/README.md` | Index listing all clients, transport type, and link to each guide |
+| `docs/usage/claude-code.md` | Claude Code (CLI) via HTTP |
+| `docs/usage/claude-desktop.md` | Claude Desktop via STDIO |
+| `docs/usage/vscode-copilot.md` | VSCode GitHub Copilot Chat via HTTP or STDIO |
+| `docs/usage/gemini-cli.md` | Gemini CLI via HTTP |
+| `docs/usage/teamwork-cli.md` | Teamwork CLI via STDIO |
+| `docs/usage/other-platforms.md` | n8n, Appmixer, and custom HTTP integrations |
+
+### Homebrew Formula (New)
+
+Added `Formula/tw-mcp.rb` — a Homebrew formula for installing the `tw-mcp` binary directly on macOS (arm64 and amd64), pinned to version `1.11.4`.
+
+### Release Workflow Enhancements
+
+Updated `.github/workflows/release.yaml`:
+
+- Added explicit GitHub Actions permissions (`contents: write`, `packages: write`, `pull-requests: write`).
+- Added a step to package per-platform release archives (`.tar.gz`) with checksums and upload them to the GitHub release under `releases/dist/`.
+- Added a `publish-homebrew` job that runs on version tag pushes (`v*`) and updates the Homebrew formula automatically after binaries are released.
+
+### Merge Conflict Resolved (`cmd/mcp-http/main.go`)
+
+Resolved a conflict in `authMiddleware.whitelistEndpoints` from merging upstream. Both sides were retained:
+
+- Our fork: `"/"` (welcome page) and `"/.well-known/oauth-protected-resource"` (OAuth discovery)
+- Upstream: `"/favicon.ico"` (unauthenticated favicon requests)
+
+See [merge-upstream.md](merge-upstream.md) for the full workflow and known conflict areas.
+
+---
+
 ## Upstream Merge — March 11, 2026
 
 ### Merge Conflict: `cmd/mcp-stdio/main.go`

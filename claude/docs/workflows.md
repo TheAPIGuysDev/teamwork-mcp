@@ -94,7 +94,7 @@ Add this to your MCP client config (e.g. `~/Library/Application Support/Claude/c
 ```json
 {
   "mcpServers": {
-    "teamwork": {
+    "teamwork-local": {
       "command": "go",
       "args": ["run", "/path/to/teamwork-mcp/cmd/mcp-stdio/main.go"],
       "env": {

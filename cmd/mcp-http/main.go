@@ -157,7 +157,7 @@ func welcomeMiddleware(resources config.Resources, next http.Handler) http.Handl
      it is designed to be connected to an AI assistant such as Claude, Copilot, or Cursor.</p>
 
   <p>For instructions on connecting your AI assistant and making requests, see the documentation:</p>
-  <p><a class="btn" href="%s/using-the-server/">&#x1F4D6; &nbsp; How to use this server</a></p>
+  <p><a class="btn" href="%s/using-the-server/" target="_blank" rel="noopener noreferrer">&#x1F4D6; &nbsp; How to use this server</a></p>
 
   <hr>
   <p class="dim">MCP endpoint: <code>%s</code> &nbsp;&bull;&nbsp;
@@ -173,6 +173,7 @@ func welcomeMiddleware(resources config.Resources, next http.Handler) http.Handl
 
 func newRouter(resources config.Resources) *http.ServeMux {
 	mux := http.NewServeMux()
+	mux.Handle("/favicon.ico", http.RedirectHandler("https://teamwork.com/favicon.ico", http.StatusPermanentRedirect))
 	mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet && r.Method != http.MethodOptions {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -245,8 +246,9 @@ func requestInfoMiddleware(next http.Handler) http.Handler {
 
 func logMiddleware(logger *slog.Logger, next http.Handler) http.Handler {
 	skipPaths := map[string]struct{}{
-		"/api/health": {}, // health checks can be very noisy
-		"/sse":        {}, // special log middleware
+		"/favicon.ico": {}, // avoid logging browser favicon requests
+		"/api/health":  {}, // health checks can be very noisy
+		"/sse":         {}, // special log middleware
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if _, skip := skipPaths[r.URL.Path]; skip {
@@ -380,8 +382,9 @@ func tracerMiddleware(resources config.Resources, next http.Handler) http.Handle
 		return next
 	}
 	skipPaths := map[string]struct{}{
-		"/api/health": {}, // health checks can be very noisy
-		"/sse":        {}, // long-lived connections don't work well with tracing
+		"/favicon.ico": {}, // avoid logging browser favicon requests
+		"/api/health":  {}, // health checks can be very noisy
+		"/sse":         {}, // long-lived connections don't work well with tracing
 	}
 	return ddhttp.WrapHandler(next, resources.Info.DatadogAPM.Service, "http.request",
 		ddhttp.WithResourceNamer(func(req *http.Request) string {
@@ -407,6 +410,8 @@ func authMiddleware(resources config.Resources, next http.Handler) http.Handler 
 		"/": {http.MethodGet},
 		// OAuth2 discovery endpoints are public
 		"/.well-known/oauth-protected-resource": {http.MethodGet, http.MethodOptions},
+		// browser may request favicons without authentication
+		"/favicon.ico": {http.MethodGet, http.MethodOptions},
 	}
 
 	whitelistPrefixEndpoints := map[string][]string{

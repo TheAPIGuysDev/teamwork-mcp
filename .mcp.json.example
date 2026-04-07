@@ -10,8 +10,8 @@
         "/bin/tw-mcp-stdio"
       ],
       "env": {
-        "TW_MCP_BEARER_TOKEN": "twp_ZXGh4V1enGvV8kK0NM8IMasU8RPR",
-        "TW_MCP_API_URL": "https://theapiguys.teamwork.com"
+        "TW_MCP_BEARER_TOKEN": "your_teamwork_api_token_here",
+        "TW_MCP_API_URL": "https://yourworkspace.teamwork.com"
       }
     }
   }

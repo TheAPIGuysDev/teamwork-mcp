@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-TEST INVALID TW TOKEN: twp_n8K3U8K1xQYlNIiRjO7QUMgth1as
+TEST TEST INVALID TW TOKEN: twp_n8K3U8K1xQYlNIiRjO7QUMgth1as
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
